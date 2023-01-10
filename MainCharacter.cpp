@@ -14,7 +14,7 @@
 
 // Sets default values
 AMainCharacter::AMainCharacter()
-	: bHasPickupItemInHand(false), bInterationKeyPressed(false), bJumpKeyPressed(false), MovementMultiplier(1.0f)
+	: MovementMultiplier(1.0f), bHasPickupItemInHand(false), bInterationKeyPressed(false), bJumpKeyPressed(false), ForwardAxisValue(0.0f)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -75,14 +75,17 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AMainCharacter::ToggleCrouch);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMainCharacter::JumpKeyPressed);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AMainCharacter::JumpKeyReleased);
 
-	//PlayerInputComponent->BindAction("TogglePickup", IE_Pressed, this, &AMainCharacter::TogglePickupItem);
 	PlayerInputComponent->BindAction("TogglePickup", IE_Pressed, this, &AMainCharacter::InteractionKeyPressed);
 	PlayerInputComponent->BindAction("TogglePickup", IE_Released, this, &AMainCharacter::InteractionKeyReleased); 
 	PlayerInputComponent->BindAction("TogglePickup", IE_Pressed, this, &AMainCharacter::PlaceItemInHand);
-	//PlayerInputComponent->BindAction("TogglePickup", IE_Released, this, &AMainCharacter::DropItemInHand);
+
+	PlayerInputComponent->BindAction("LeftMouse", IE_Pressed, this, &AMainCharacter::LeftMouseButtonPressed);
+	PlayerInputComponent->BindAction("RightMouse", IE_Pressed, this, &AMainCharacter::RightMouseButtonPressed);
+	PlayerInputComponent->BindAction("RightMouse", IE_Released, this, &AMainCharacter::RightMouseButtonReleased);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AMainCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AMainCharacter::MoveRight);
@@ -92,6 +95,7 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 void AMainCharacter::MoveForward(float AxisValue)
 {
+	ForwardAxisValue = AxisValue;
 	if ((Controller != nullptr) && (AxisValue != 0.0f))
 	{
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -114,6 +118,18 @@ void AMainCharacter::MoveRight(float AxisValue)
 	}
 }
 
+void AMainCharacter::ToggleCrouch()
+{
+	if (!GetCharacterMovement()->IsCrouching())
+	{
+		Crouch();
+	}
+	else
+	{
+		UnCrouch();
+	}
+}
+
 void AMainCharacter::PlaceItemInHand()
 {
 	Timer = 0.0f;
@@ -131,15 +147,8 @@ void AMainCharacter::PlaceItemInHand()
 	PickupItemInHand->Player = this;
 	PickupItemInHand->TogglePickupItem();
 
-	if (PickupItemInHand->StaticMesh)
-	{
-		PickupItemInHand->StaticMesh->SetSimulatePhysics(false);
-	}
-	PickupItemInHand->SetActorEnableCollision(false);
-
 	FAttachmentTransformRules AttachmentTransformRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
 	PickupItemInHand->AttachToActor(this, AttachmentTransformRules);
-
 }
 
 void AMainCharacter::DropItemInHand()
@@ -153,12 +162,6 @@ void AMainCharacter::DropItemInHand()
 	FDetachmentTransformRules DetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, true);
 	PickupItemInHand->DetachFromActor(DetachmentTransformRules);
 
-	if (PickupItemInHand->StaticMesh && PickupItemInHand->bPhysicsEnabled)
-	{
-		PickupItemInHand->StaticMesh->SetSimulatePhysics(true);
-	}
-
-	PickupItemInHand->SetActorEnableCollision(true);
 	PickupItemInHand->Player = nullptr;
 	PickupItemInHand = nullptr;
 }
@@ -212,6 +215,11 @@ bool AMainCharacter::IsItemInInventory(ACollectableItem* Item)
 	}
 
 	return false;
+}
+
+float AMainCharacter::GetForwardMovementAxisValue()
+{
+	return ForwardAxisValue;
 }
 
 uint32 AMainCharacter::GetClosestOverlappedItem()

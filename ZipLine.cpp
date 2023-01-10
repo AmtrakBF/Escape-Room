@@ -40,7 +40,6 @@ void AZipLine::BeginPlay()
 
 	NormalizedZiplineStartToEndDistance = FMath::PointDistToSegment(ZiplineStartPoint->GetComponentLocation(), ZiplineEndPoint->GetComponentLocation(), ZiplineEndPoint->GetComponentLocation());
 	ZiplineDirection = UKismetMathLibrary::GetDirectionUnitVector(ZiplineStartPoint->GetComponentLocation(), ZiplineEndPoint->GetComponentLocation());
-
 }
 
 // Called every frame
@@ -63,7 +62,6 @@ void AZipLine::Tick(float DeltaTime)
 			SetPlayerMovementFlying(false);
 		}
 	}
-
 }
 
 void AZipLine::BeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)

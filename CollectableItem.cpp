@@ -8,7 +8,7 @@
 
 // Sets default values
 ACollectableItem::ACollectableItem()
-	: bIsPickedUp(false), bCanBePlacedInInventory(true), bPhysicsEnabled(false)
+	: bCanBePlacedInInventory(true), bPhysicsEnabled(false), bIsPickedUp(false)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -18,7 +18,6 @@ ACollectableItem::ACollectableItem()
 
 	Collision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Collision"));
 	Collision->SetupAttachment(RootComponent);
-
 }
 
 // Called when the game starts or when spawned
@@ -30,6 +29,16 @@ void ACollectableItem::BeginPlay()
 	{
 		bPhysicsEnabled = true;
 	}
+}
+
+void ACollectableItem::EnableCollisionToActor()
+{
+	StaticMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+}
+
+void ACollectableItem::DisableCollisionToActor()
+{
+	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 static float Time = 0.0f;
@@ -58,6 +67,12 @@ void ACollectableItem::Pickup()
 	if (!bCanBePlacedInInventory || !Player)
 		return;
 
+	if (bPhysicsEnabled)
+	{
+		StaticMesh->SetSimulatePhysics(false);
+	}
+	DisableCollisionToActor();
+
 	Player->AddToInventory(this);
 }
 
@@ -65,6 +80,12 @@ void ACollectableItem::Drop()
 {
 	if (!bCanBePlacedInInventory || !Player)
 		return;
+
+	EnableCollisionToActor();
+	if (bPhysicsEnabled)
+	{
+		StaticMesh->SetSimulatePhysics(true);
+	}
 
 	Player->RemoveFromInventory(this);
 }

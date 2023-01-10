@@ -38,6 +38,9 @@ protected:
 
 	bool bIsPickedUp;
 
+	void EnableCollisionToActor();
+	void DisableCollisionToActor();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
