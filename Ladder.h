@@ -21,14 +21,26 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Collision")
 	class UBoxComponent* Collision;
 
-	UPROPERTY(EditAnywhere, Category = "Collision")
-	class UBoxComponent* LadderBottomCollision;
+	UPROPERTY(EditAnywhere, Category = "Ladder")
+	class USceneComponent* LadderTop;
+
+	UPROPERTY(EditAnywhere, Category = "Ladder")
+	class USceneComponent* LadderBottom;
 
 	UPROPERTY(EditAnywhere, Category = "Ladder")
 	class UArrowComponent* LadderDirection;
 
 	UPROPERTY(EditAnywhere, Category = "Ladder")
 	float LadderSpeed;
+		
+	UPROPERTY(EditAnywhere, Category = "Ladder")
+	float LadderForce;
+
+	UPROPERTY(EditAnywhere, Category = "Ladder")
+	float LadderBottomDistance;
+
+	UPROPERTY(EditAnywhere, Category = "Ladder")
+	float LadderTopDistance;
 
 private:
 	class AMainCharacter* Player;
@@ -37,6 +49,9 @@ private:
 
 	float MovementAxis;
 	bool bIsOnGround;
+
+	float DistanceFromTopToCenter;
+	float DistanceFromBottomToCenter;
 
 protected:
 	// Called when the game starts or when spawned
@@ -50,10 +65,5 @@ public:
 	void BeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	UFUNCTION()
 	void EndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-	UFUNCTION()
-	void OnLadderOverlapBottom(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	UFUNCTION()
-	void OffLadderOverlapBottom(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 };

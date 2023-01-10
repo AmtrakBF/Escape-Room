@@ -12,7 +12,7 @@
 
 // Sets default values
 ALadder::ALadder()
-	: LadderSpeed(1.0f), Player(nullptr), CharacterMovement(nullptr), MovementAxis(0.0f), bIsOnGround(false)
+	: LadderSpeed(100.0f), LadderForce(1.0f), LadderBottomDistance(40.0f), LadderTopDistance(40.0f), Player(nullptr), CharacterMovement(nullptr), MovementAxis(0.0f), bIsOnGround(false), DistanceFromTopToCenter(0.0f), DistanceFromBottomToCenter(0.0f)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -23,11 +23,14 @@ ALadder::ALadder()
 	Collision = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	Collision->SetupAttachment(RootComponent);
 
-	LadderBottomCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("LadderCollision"));
-	LadderBottomCollision->SetupAttachment(RootComponent);
-
 	LadderDirection = CreateDefaultSubobject<UArrowComponent>(TEXT("LadderDirection"));
 	LadderDirection->SetupAttachment(RootComponent);
+
+	LadderTop = CreateDefaultSubobject<USceneComponent>(TEXT("LadderTop"));
+	LadderTop->SetupAttachment(RootComponent);
+
+	LadderBottom = CreateDefaultSubobject<USceneComponent>(TEXT("LadderBottom"));
+	LadderBottom->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned
@@ -38,8 +41,8 @@ void ALadder::BeginPlay()
 	Collision->OnComponentBeginOverlap.AddDynamic(this, &ALadder::BeginOverlap);
 	Collision->OnComponentEndOverlap.AddDynamic(this, &ALadder::EndOverlap);
 
-	LadderBottomCollision->OnComponentBeginOverlap.AddDynamic(this, &ALadder::OnLadderOverlapBottom);
-	LadderBottomCollision->OnComponentEndOverlap.AddDynamic(this, &ALadder::OffLadderOverlapBottom);
+	DistanceFromTopToCenter = FVector::Distance(GetActorLocation(), LadderTop->GetComponentLocation());
+	DistanceFromBottomToCenter = FVector::Distance(GetActorLocation(), LadderBottom->GetComponentLocation());
 }
 
 // Called every frame
@@ -55,19 +58,30 @@ void ALadder::Tick(float DeltaTime)
 
 	MovementAxis = (Player->GetForwardMovementAxisValue() * Player->GetActorForwardVector().Dot(LadderDirection->GetForwardVector()));
 
-	if (bIsOnGround && MovementAxis < 0)
-	{
-		return;
-	}
-
 	if (MovementAxis == 0.0f)
 	{
 		CharacterMovement->Velocity = FVector(0.0f);
 		return;
 	}
 
-	Player->MovementMultiplier = (LadderDirection->GetForwardVector() - FVector(0.7f)).GetAbs();
-	Player->AddMovementInput((Player->GetActorUpVector() + ((LadderDirection->GetForwardVector() * MovementAxis) / 2)) * MovementAxis);
+	float PlayerDistance = FVector::Distance(Player->GetActorLocation(), GetActorLocation());
+
+	if (abs(DistanceFromTopToCenter - PlayerDistance) < (LadderTopDistance - (CharacterMovement->CrouchedHalfHeight * Player->bIsCrouched)) || abs(DistanceFromBottomToCenter - PlayerDistance) < LadderBottomDistance)
+	{
+		Player->MovementMultiplier = FVector(1.0f);
+		if (CharacterMovement->Velocity.Z < LadderSpeed && CharacterMovement->Velocity.Z > -LadderSpeed)
+		{
+			CharacterMovement->AddForce((Player->GetActorUpVector() + ((LadderDirection->GetForwardVector() * MovementAxis) / 2.5)) * (CharacterMovement->Mass * -CharacterMovement->GetGravityZ()) * MovementAxis * (LadderForce * 1.1));
+		}
+		return;
+	}
+
+	Player->MovementMultiplier = (FVector(1.0f) - (LadderDirection->GetForwardVector().GetAbs())).GetAbs();
+	if (CharacterMovement->Velocity.Z < LadderSpeed && CharacterMovement->Velocity.Z > -LadderSpeed)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *Player->MovementMultiplier.ToString());
+		CharacterMovement->AddForce((Player->GetActorUpVector() + ((LadderDirection->GetForwardVector() * MovementAxis))) * (CharacterMovement->Mass * -CharacterMovement->GetGravityZ()) * MovementAxis * (LadderForce * 1.1));
+	}
 }
 
 void ALadder::BeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -82,10 +96,6 @@ void ALadder::BeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* Oth
 	}
 
 	CharacterMovement = Cast<UCharacterMovementComponent>(Player->GetMovementComponent());
-	if (CharacterMovement)
-	{
-		CharacterMovement->SetMovementMode(MOVE_Flying);
-	}
 }
 
 void ALadder::EndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -95,27 +105,7 @@ void ALadder::EndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* Other
 	{
 		Player->MovementMultiplier = FVector(1.0f);
 	}
-	CharacterMovement = Cast<UCharacterMovementComponent>(Player->GetMovementComponent());
-	if (CharacterMovement)
-	{
-		CharacterMovement->SetMovementMode(MOVE_Walking);
-	}
 
 	CharacterMovement = nullptr;
 	Player = nullptr;
 }
-
-void ALadder::OnLadderOverlapBottom(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	bIsOnGround = true;
-	if (Player)
-	{
-		Player->MovementMultiplier = FVector(1.0f);
-	}
-}
-
-void ALadder::OffLadderOverlapBottom(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	bIsOnGround = false;
-}
-
