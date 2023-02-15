@@ -10,10 +10,45 @@
 #include "Camera/CameraComponent.h"
 
 AGrappleGun::AGrappleGun()
-	: GrappleState(EGrappleState::GS_DETACHED), GrappleLocation(0.0f), GrappleDirection(0.0f), CharacterMovementComponent(nullptr), MaxGrappleDistance(2500.0f), GrapplingSpeed(1.0f)
+	: GrappleState(EGrappleState::GS_DETACHED), MaxGrappleDistance(2500.0f), GrapplingSpeed(1.0f), GrappleLocation(0.0f), GrappleDirection(0.0f), GrappleLength(0.0f), PlayerVelocity(0.0f), CharacterMovementComponent(nullptr)
 {
 	Grapple = CreateDefaultSubobject<UCableComponent>(TEXT("Grapple"));
 	Grapple->SetupAttachment(RootComponent);
+}
+
+void AGrappleGun::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+// 	float distance = (Grapple->GetComponentLocation() - GrappleLocation).Size();
+// 	if (distance < GrappleLength && GrappleState == EGrappleState::GS_PULLING)
+// 	{
+// 		GrappleLength = distance;
+// 		Grapple->CableLength = distance;
+// 	}
+
+	if (CharacterMovementComponent && Player && GrappleState != EGrappleState::GS_DETACHED)
+	{
+		Grapple->EndLocation = UKismetMathLibrary::InverseTransformLocation(GetActorTransform(), GrappleLocation);
+		GrappleDirection = UKismetMathLibrary::GetDirectionUnitVector(GetActorLocation(), GrappleLocation);
+
+		//! So yeah I cheated but you learn new stuff when you cheat i guess
+
+		FVector GrapplingDistance = GetActorLocation() - GrappleLocation;
+		float DistanceMultiplier = GrapplingDistance.Dot(Player->GetVelocity());
+
+		//! We turn distance into a direction
+		UKismetMathLibrary::Vector_Normalize(GrapplingDistance);
+
+		//! Multiply by -2 (constant for more force) to reverse direction (So we face towards the GrappleLocation)
+		FVector Force = DistanceMultiplier * GrapplingDistance * -2;
+
+		if (GrappleState == EGrappleState::GS_PULLING)
+		{
+			Force = GrappleDirection * CharacterMovementComponent->Mass * 1500 * (GrapplingSpeed * 1.1);
+		}
+		CharacterMovementComponent->AddForce(Force);
+	}
 }
 
 void AGrappleGun::TogglePickupItem()
@@ -57,6 +92,34 @@ void AGrappleGun::TogglePickupItem()
 	}
 }
 
+void AGrappleGun::OnMouseLeftClickPressed(AActor* Actor)
+{
+	if (GrappleState == EGrappleState::GS_ATTACHED || GrappleState == EGrappleState::GS_PULLING)
+	{
+		DetachGrapple();
+	}
+	else if (GrappleState == EGrappleState::GS_DETACHED)
+	{
+		AttachGrapple();
+	}
+}
+
+void AGrappleGun::OnMouseRightClickPressed(AActor* Actor)
+{
+	if (GrappleState == EGrappleState::GS_ATTACHED)
+	{
+		GrappleState = EGrappleState::GS_PULLING;
+	}
+}
+
+void AGrappleGun::OnMouseRightClickReleased(AActor* Actor)
+{
+	if (GrappleState == EGrappleState::GS_PULLING)
+	{
+		GrappleState = EGrappleState::GS_ATTACHED;
+	}
+}
+
 void AGrappleGun::AttachGrapple()
 {
 	Grapple->SetVisibility(true);
@@ -80,15 +143,11 @@ void AGrappleGun::AttachGrapple()
 		GrappleDirection = UKismetMathLibrary::GetDirectionUnitVector(Player->GetActorLocation(), Hit.ImpactPoint);
 
 		GrappleState = EGrappleState::GS_ATTACHED;
+		GrappleLength = (Grapple->GetComponentLocation() - GrappleLocation).Size();
 	}
 	else
 	{
 		GrappleState = EGrappleState::GS_DETACHED;
-
-		if (CharacterMovementComponent)
-		{
-			CharacterMovementComponent->SetMovementMode(MOVE_Walking);
-		}
 	}
 }
 
@@ -98,73 +157,4 @@ void AGrappleGun::DetachGrapple()
 	Grapple->EndLocation = FVector(0.0f);
 
 	GrappleState = EGrappleState::GS_DETACHED;
-
-	if (CharacterMovementComponent)
-	{
-		CharacterMovementComponent->SetMovementMode(MOVE_Walking);
-	}
-}
-
-void AGrappleGun::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	if (GrappleState == EGrappleState::GS_ATTACHED)
-	{
-		Grapple->EndLocation = UKismetMathLibrary::InverseTransformLocation(GetActorTransform(), GrappleLocation);
-	}
-
-	if (GrappleState == EGrappleState::GS_PULLING && Player)
-	{
-		Grapple->EndLocation = UKismetMathLibrary::InverseTransformLocation(GetActorTransform(), GrappleLocation);
-		GrappleDirection = UKismetMathLibrary::GetDirectionUnitVector(Player->GetActorLocation(), GrappleLocation);
-
-		if (CharacterMovementComponent)
-		{
-			CharacterMovementComponent->AddForce((GrappleDirection * 2000 * CharacterMovementComponent->Mass) * GrapplingSpeed);
-		}
-	}
-}
-
-void AGrappleGun::OnMouseLeftClickPressed(AActor* Actor)
-{
-	if (GrappleState == EGrappleState::GS_ATTACHED || GrappleState == EGrappleState::GS_PULLING)
-	{
-		DetachGrapple();
-	}
-	else if (GrappleState == EGrappleState::GS_DETACHED)
-	{
-		AttachGrapple();
-	}
-}
-
-void AGrappleGun::OnMouseRightClickPressed(AActor* Actor)
-{
-	if (GrappleState == EGrappleState::GS_ATTACHED)
-	{
-		if (CharacterMovementComponent)
-		{
-			CharacterMovementComponent->SetMovementMode(MOVE_Flying);
-			if (Player)
-			{
-				Player->MovementMultiplier = FVector(0.5f);
-			}
-		}
-
-		GrappleState = EGrappleState::GS_PULLING;
-	}
-}
-
-void AGrappleGun::OnMouseRightClickReleased(AActor* Actor)
-{
-	if (GrappleState == EGrappleState::GS_PULLING)
-	{
-		GrappleState = EGrappleState::GS_ATTACHED;
-
-		if (CharacterMovementComponent)
-		{
-			CharacterMovementComponent->SetMovementMode(MOVE_Walking);
-			Player->MovementMultiplier = FVector(1.0f);
-		}
-	}
 }

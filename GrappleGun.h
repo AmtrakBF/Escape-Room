@@ -26,15 +26,8 @@ class UE5_TEST_API AGrappleGun : public ACollectableItem
 public:
 	AGrappleGun();
 
-
 	EGrappleState GrappleState;
-private:
-	FVector GrappleLocation;
-	FVector GrappleDirection;
 
-	class UCharacterMovementComponent* CharacterMovementComponent;
-
-public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Grappling")
 	class UCableComponent* Grapple;
 
@@ -45,8 +38,13 @@ public:
 	float GrapplingSpeed;
 
 private:
-	void AttachGrapple();
-	void DetachGrapple();
+	FVector GrappleLocation;
+	FVector GrappleDirection;
+
+	float GrappleLength;
+	float PlayerVelocity;
+
+	class UCharacterMovementComponent* CharacterMovementComponent;
 
 public:
 	virtual void Tick(float DeltaTime) override;
@@ -59,5 +57,8 @@ public:
 	UFUNCTION()
 	void OnMouseRightClickReleased(AActor* Actor);
 
+private:
+	void AttachGrapple();
+	void DetachGrapple();
 	
 };
